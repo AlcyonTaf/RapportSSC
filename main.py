@@ -14,6 +14,8 @@ except TypeError:
 
 from docx.oxml.shared import qn
 from docx.oxml.text.paragraph import CT_P
+from docx.enum.table import WD_CELL_VERTICAL_ALIGNMENT
+from docx.enum.text import WD_PARAGRAPH_ALIGNMENT
 
 
 # Le but va etre de mettre en forme le rapport des essais SSC de la corrosion
@@ -29,7 +31,7 @@ def get_data_from_table():
     # Nom et position des tableaux à récupérer
     table_list = {'items_essai': 1, 'items_parent': 2, 'conditions_essais': 3, 'resultats_essais': 5}
     table_valeur = {}
-
+    # Todo : suppresion des tableaux
     for nom_table, position in table_list.items():
         # Exemple pour recupérer les données d'un tableau
         get_table = doc.tables[position]
@@ -43,6 +45,15 @@ def get_data_from_table():
 
         table_valeur[nom_table] = data
 
+    # Maintenant que l'on a tous récupérer on supprime les tables du documents :
+    increment = 0
+    for nom_table, position in table_list.items():
+        # print("delete :" + nom_table)
+        # print("avant: " + str(position))
+        # print("new :" + str(position-increment))
+        delete_table = doc.tables[position - increment]
+        delete_table._element.getparent().remove(delete_table._element)
+        increment += 1
     return table_valeur
 
 
@@ -55,13 +66,14 @@ def clean_table_data():
     dict_tables = get_data_from_table()
     # items_parent :
     # On va supprimer les doublons puis vérifier que la table contient bien uniquement 2 lignes, sinon c'est qu'il y a plusieurs items parents!
-    #Todo : Voir pour vérifier également que cette table contient bien des données.
+    # Todo : Voir pour vérifier également que cette table contient bien des données.
+    # Todo : vérifier les forms des items parents
     items_parent = dict_tables['items_parent']
     items_parent = list(items_parent for items_parent, _ in itertools.groupby(items_parent))
     try:
         if len(items_parent) == 2:
             dict_tables['items_parent'] = items_parent
-            print(dict_tables['items_parent'])
+            # print(dict_tables['items_parent'])
         else:
             # Plus ou moins de 2 ligne = probleme!!
             raise ValueError
@@ -70,11 +82,24 @@ def clean_table_data():
 
     # items_essai :
     # On va lui donner la forme du tableau de destination :
-        # Concatenation des dimensions => Position 2
-        # Concaténation des positons => Position 0
-        # Ref client => Position 1
+    # Normalement les informations seront toujours a la même position, sauf si on change l'export de teexma
+    # Concatenation des dimensions => Position 2
+    # Concaténation des positons => Position 0
+    # Ref client => Position 1
+    items_essai = dict_tables['items_essai']
+    # print(items_essai)
+    temp_items_essais = []
+    for row in items_essai[1:]:
+        ref_item = row[1]
+        dimensions = row[5] + "*" + row[6] + "*" + row[7]
+        position = row[2] + " / " + row[3]
+        temp_items_essais.append([position, ref_item, dimensions])
 
+    dict_tables['items_essai'] = temp_items_essais
 
+    # print(dict_tables['items_essai'])
+
+    return dict_tables
 
 
 # Trouver un bookmark : https://stackoverflow.com/questions/24965042/python-docx-insertion-point
@@ -105,7 +130,9 @@ def bookmark_text(
         italic=False,
         bold=False,
         style=None,
-        header=False, ):
+        header=False,
+        font_name=None,
+        font_size=None):
     doc_element = (
         doc.sections[0].header.part._element
         if header is True
@@ -123,12 +150,15 @@ def bookmark_text(
                 # for elem in par.iter():
                 #     print("%s - %s" % (elem.tag, elem.text))
                 # print(et.tostring(par, pretty_print=True))
+                # Todo : Voir si on ne peut pas plutot modifier le text du bookmark
                 i = par.index(bookmark) - 1
                 p = doc.add_paragraph()
                 run = p.add_run(text, style)
                 run.underline = underline
                 run.italic = italic
                 run.bold = bold
+                run.font.size = font_size
+                run.font.name = font_name
                 par.insert(i, run._element)
                 p = p._element
                 p.getparent().remove(p)
@@ -149,17 +179,62 @@ def bookmark_text(
 
 # Press the green button in the gutter to run the script.
 if __name__ == '__main__':
-    doc = Document(".\ExtractionLims\Test Rapport Essai corrosion SSC - A22_00202 - 2022-07-05.docx")
+    doc = Document(".\ExtractionLims\Test Rapport Essai corrosion - modif.docx")
     all_paras = doc.paragraphs
-    #print(len(all_paras))
+    # print(len(all_paras))
 
-    #print(get_data_from_table())
-    clean_table_data()
+    # print(get_data_from_table())
+    result = clean_table_data()
+
+    # On complete la table Items_Essais
+    table_items_essais = doc.tables[0]
+    # essai pour récupérer les info de styles de la table
+    # for cell in table_items_essais.row_cells(1):
+    #     for paragraph in cell.paragraphs:
+    #         for run in paragraph.runs:
+    #             print(run.font)
+    #             font = run.font
+    for row_item in result['items_essai']:
+        new_row = table_items_essais.add_row().cells
+        for i, val in enumerate(row_item):
+            new_row[i].text = val
+            for paragraph in new_row[i].paragraphs:
+                paragraph.alignment = WD_PARAGRAPH_ALIGNMENT.CENTER
+                for run in paragraph.runs:
+                    run.font.name = 'Arial'
+                    run.font.size = 127000
+
+    # Todo : Remplacer les bookmarks
+    ###### ATTENTION ######
+    # Il ne faut pas qu'il y ai des demandent de correction dans le word, il faut tous traiter ou ignorer
+    # Remplacement BK de l'item parent :
+    BK_item_parent = {'BK_Item_TTH_Parent': 5, 'BK_Item_Nuance': [6, 7], 'BK_Item_UM': 1, 'BK_Item_Coulee': 3,
+                      'BK_Item_EP_UM': 8}
+
+    for bk_name, position in BK_item_parent.items():
+        # cas particulier
+        # Nuance peut etre a 2 endroit, on regarde si le 1er est vide si oui on prend le 2eme
+        if bk_name == 'BK_Item_Nuance':
+            if result['items_parent'][1][position[0]]:
+                bookmark_text(doc, bk_name, " " + result['items_parent'][1][position[0]], font_name='Arial',
+                              font_size=127000)
+            elif not result['items_parent'][1][position[0]] and result['items_parent'][1][position[1]]:
+                bookmark_text(doc, bk_name, " " + result['items_parent'][1][position[1]], font_name='Arial',
+                              font_size=127000)
+            else:
+                bookmark_text(doc, bk_name, " N/A", font_name='Arial', font_size=127000)
+
+        else:
+            if not result['items_parent'][1][position]:
+                bookmark_text(doc, bk_name, " N/A", font_name='Arial', font_size=127000)
+            else:
+                bookmark_text(doc, bk_name, " " + result['items_parent'][1][position], font_name='Arial',
+                              font_size=127000)
 
     # test = get_bookmark_par_element(doc, "BK_Condition_Solution")
     # print(test.r)
 
-    # test2 = bookmark_text(doc, "BK_Condition_Solution", " essai remplacement")
+    bookmark_text(doc, "BK_Condition_Solution", " 1111", font_name='Arial', font_size=127000)
 
     # Exemple pour recupérer les données d'un tableau
     # tb = doc.tables[1]
