@@ -1,4 +1,6 @@
 # -*- coding: utf-8 -*-
+import itertools
+
 import docx
 from lxml import etree as et
 from docx.document import Document
@@ -16,6 +18,62 @@ from docx.oxml.text.paragraph import CT_P
 
 # Le but va etre de mettre en forme le rapport des essais SSC de la corrosion
 # TOdo : Premiere chose a faire : Parcourir toutes les tables provisoire pour extraire les données et les stocker, ensuite on les supprimes
+
+
+def get_data_from_table():
+    """
+    Le but est de récupérer le contenue des tables provisoires et ensuite les supprimer
+    Position des tables :
+    :return:
+    """
+    # Nom et position des tableaux à récupérer
+    table_list = {'items_essai': 1, 'items_parent': 2, 'conditions_essais': 3, 'resultats_essais': 5}
+    table_valeur = {}
+
+    for nom_table, position in table_list.items():
+        # Exemple pour recupérer les données d'un tableau
+        get_table = doc.tables[position]
+
+        # pour mettre dans une liste :
+        data = [['' for i in range(len(get_table.columns))] for j in range(len(get_table.rows))]
+        for y, row in enumerate(get_table.rows):
+            for j, cell in enumerate(row.cells):
+                if cell.text:
+                    data[y][j] = cell.text
+
+        table_valeur[nom_table] = data
+
+    return table_valeur
+
+
+def clean_table_data():
+    """
+    On va faire le trie/nettoyage dans certaines tables ici
+    :param dict_tables:
+    :return: dict nettoyer
+    """
+    dict_tables = get_data_from_table()
+    # items_parent :
+    # On va supprimer les doublons puis vérifier que la table contient bien uniquement 2 lignes, sinon c'est qu'il y a plusieurs items parents!
+    #Todo : Voir pour vérifier également que cette table contient bien des données.
+    items_parent = dict_tables['items_parent']
+    items_parent = list(items_parent for items_parent, _ in itertools.groupby(items_parent))
+    try:
+        if len(items_parent) == 2:
+            dict_tables['items_parent'] = items_parent
+            print(dict_tables['items_parent'])
+        else:
+            # Plus ou moins de 2 ligne = probleme!!
+            raise ValueError
+    except ValueError:
+        print("Les items n'ont pas tous le même parents!")
+
+    # items_essai :
+    # On va lui donner la forme du tableau de destination :
+        # Concatenation des dimensions => Position 2
+        # Concaténation des positons => Position 0
+        # Ref client => Position 1
+
 
 
 
@@ -53,7 +111,7 @@ def bookmark_text(
         if header is True
         else doc._part._element
     )
-    #TODO : Voir pour chercher également bookmarkend. s'en servir pour supprimer le contenue entre start et end
+    # TODO : Voir pour chercher également bookmarkend. s'en servir pour supprimer le contenue entre start et end
     bookmarks_list = doc_element.findall(".//" + qn("w:bookmarkStart"))
     for bookmark in bookmarks_list:
         name = bookmark.get(qn("w:name"))
@@ -80,7 +138,7 @@ def bookmark_text(
                     # print(i)
                     asup = par[par.index(bookmark) + i]
                     #
-                    #print(et.tostring(asup, pretty_print=True))
+                    # print(et.tostring(asup, pretty_print=True))
                     par.remove(asup)
 
                 # par.remove(bookmark)
@@ -93,15 +151,30 @@ def bookmark_text(
 if __name__ == '__main__':
     doc = Document(".\ExtractionLims\Test Rapport Essai corrosion SSC - A22_00202 - 2022-07-05.docx")
     all_paras = doc.paragraphs
-    print(len(all_paras))
+    #print(len(all_paras))
 
-    test = get_bookmark_par_element(doc, "BK_Condition_Solution")
+    #print(get_data_from_table())
+    clean_table_data()
+
+    # test = get_bookmark_par_element(doc, "BK_Condition_Solution")
     # print(test.r)
 
-    test2 = bookmark_text(doc, "BK_Condition_Solution", " essai remplacement")
+    # test2 = bookmark_text(doc, "BK_Condition_Solution", " essai remplacement")
 
     # Exemple pour recupérer les données d'un tableau
-    tb = doc.tables[0]
+    # tb = doc.tables[1]
+
+    # pour mettre dans une liste :
+    # list = [['' for i in range(len(tb.columns))] for j in range(len(tb.rows))]
+    # for y, row in enumerate(tb.rows):
+    #     for j, cell in enumerate(row.cells):
+    #         if cell.text:
+    #             list[y][j] = cell.text
+    #
+    # print(list)
+    # print(type(list))
+
+    # Pour recuper le contenue dans un dict avec nom de colonne comme clef
     # data =[]
     # for i, row in enumerate(tb.rows):
     #     print(i)
