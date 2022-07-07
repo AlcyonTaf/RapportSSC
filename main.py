@@ -138,42 +138,50 @@ def bookmark_text(
         if header is True
         else doc._part._element
     )
-    # TODO : Voir pour chercher également bookmarkend. s'en servir pour supprimer le contenue entre start et end
     bookmarks_list = doc_element.findall(".//" + qn("w:bookmarkStart"))
     for bookmark in bookmarks_list:
         name = bookmark.get(qn("w:name"))
         if name == bookmark_name:
             par = bookmark.getparent()
-            if not isinstance(par, CT_P):
-                return False
-            else:
-                # for elem in par.iter():
-                #     print("%s - %s" % (elem.tag, elem.text))
-                # print(et.tostring(par, pretty_print=True))
-                # Todo : Voir si on ne peut pas plutot modifier le text du bookmark
-                i = par.index(bookmark) - 1
-                p = doc.add_paragraph()
-                run = p.add_run(text, style)
-                run.underline = underline
-                run.italic = italic
-                run.bold = bold
-                run.font.size = font_size
-                run.font.name = font_name
-                par.insert(i, run._element)
-                p = p._element
-                p.getparent().remove(p)
-                p._p = p._element = None
-                # Essai pour suppresion bookmarks + text
-                for i in range(2, -1, -1):
-                    # print(i)
-                    asup = par[par.index(bookmark) + i]
-                    #
-                    # print(et.tostring(asup, pretty_print=True))
-                    par.remove(asup)
 
-                # par.remove(bookmark)
-                # print(et.tostring(par, pretty_print=True))
-                return True
+            # => Rajouter pour supprimer par position start et end
+            pos_BK_start = par.index(bookmark)
+            BK_id = bookmark.get(qn("w:id")) # => Rajouter pour supprimer par position start et end
+            bookmark_end_list = par.findall(".//" + qn("w:bookmarkEnd")) # => Rajouter pour supprimer par position start et end
+            for BK_end in bookmark_end_list:
+                if BK_end.get(qn("w:id")) == BK_id:
+                    pos_BK_end = par.index(BK_end)
+
+                    if not isinstance(par, CT_P):
+                        return False
+                    else:
+                        # for elem in par.iter():
+                        #     print("%s - %s" % (elem.tag, elem.text))
+                        # print(et.tostring(par, pretty_print=True))
+                        # Todo : Voir si on ne peut pas plutot modifier le text du bookmark
+                        i = par.index(bookmark) - 1
+                        p = doc.add_paragraph()
+                        run = p.add_run(text, style)
+                        run.underline = underline
+                        run.italic = italic
+                        run.bold = bold
+                        run.font.size = font_size
+                        run.font.name = font_name
+                        par.insert(i, run._element)
+                        p = p._element
+                        p.getparent().remove(p)
+                        p._p = p._element = None
+                        # Essai pour suppresion bookmarks + text
+                        for x in range(pos_BK_start - 1, pos_BK_end, -1):
+                            # print(i)
+                            asup = par[x]
+                            #
+                            # print(et.tostring(asup, pretty_print=True))
+                            par.remove(asup)
+
+                        # par.remove(bookmark)
+                        # print(et.tostring(par, pretty_print=True))
+                        return True
     return False
 
 
