@@ -64,6 +64,28 @@ def clean_table_data():
     :return: dict nettoyer
     """
     dict_tables = get_data_from_table()
+
+    # resultats_essais : Il faut trouvé la ref client dans la table items_essai et l'ajouter dans cette table avec de nettoyer items_essais
+    resultats_essais = dict_tables['resultats_essais']
+    items_essai = dict_tables['items_essai']
+    print(resultats_essais)
+    print(items_essai)
+    for row in resultats_essais[1:]:
+        print(row[0])
+        for rowx in items_essai[1:]:
+            try:
+                print(rowx.index(row[0]))
+                row[0] = rowx[1]
+            except ValueError:
+                pass
+            # for index, item in enumerate(rowx):
+            #    print(str(index) + " -" + str(item))
+        #test = [index for (index, item) in enumerate(items_essai[1:]) if item == row[0]]
+        #print(test)
+    print(resultats_essais)
+
+
+
     # items_parent :
     # On va supprimer les doublons puis vérifier que la table contient bien uniquement 2 lignes, sinon c'est qu'il y a plusieurs items parents!
     # Todo : Voir pour vérifier également que cette table contient bien des données.
@@ -98,6 +120,21 @@ def clean_table_data():
     dict_tables['items_essai'] = temp_items_essais
 
     # print(dict_tables['items_essai'])
+
+    # conditions_essais :
+    conditions_essais = dict_tables['conditions_essais']
+    # On supprime la 1er colonne de chaque ligne car ne sert a rien et comme différente empeche la suppresion des doublon
+    conditions_essais = [row[1:] for row in conditions_essais]
+    conditions_essais = list(conditions_essais for conditions_essais, _ in itertools.groupby(conditions_essais))
+    try:
+        if len(conditions_essais) == 2:
+            dict_tables['conditions_essais'] = conditions_essais
+            # print(dict_tables['items_parent'])
+        else:
+            # Plus ou moins de 2 ligne = probleme!!
+            raise ValueError
+    except ValueError:
+        print("Les items n'ont pas tous les mêmes conditions d'essais")
 
     return dict_tables
 
@@ -146,9 +183,10 @@ def bookmark_text(
 
             # => Rajouter pour supprimer par position start et end
             pos_BK_start = par.index(bookmark)
-            #print(pos_BK_start)
-            BK_id = bookmark.get(qn("w:id")) # => Rajouter pour supprimer par position start et end
-            bookmark_end_list = par.findall(".//" + qn("w:bookmarkEnd")) # => Rajouter pour supprimer par position start et end
+            # print(pos_BK_start)
+            BK_id = bookmark.get(qn("w:id"))  # => Rajouter pour supprimer par position start et end
+            bookmark_end_list = par.findall(
+                ".//" + qn("w:bookmarkEnd"))  # => Rajouter pour supprimer par position start et end
             for BK_end in bookmark_end_list:
                 if BK_end.get(qn("w:id")) == BK_id:
                     pos_BK_end = par.index(BK_end)
@@ -158,10 +196,10 @@ def bookmark_text(
             else:
                 # for elem in par.iter():
                 #     print("%s - %s" % (elem.tag, elem.text))
-                print(et.tostring(par, pretty_print=True))
+                # print(et.tostring(par, pretty_print=True))
                 # Todo : Voir si on ne peut pas plutot modifier le text du bookmark
-                i = par.index(bookmark) #- 1 Désactivé car insert a deux  index avant le bk
-                print(et.tostring(par[i], pretty_print=True))
+                i = par.index(bookmark)  # - 1 Désactivé car insert a deux  index avant le bk
+                # print(et.tostring(par[i], pretty_print=True))
                 p = doc.add_paragraph()
                 run = p.add_run(text, style)
                 run.underline = underline
@@ -170,19 +208,47 @@ def bookmark_text(
                 run.font.size = font_size
                 run.font.name = font_name
                 par.insert(i, run._element)
-                print(et.tostring(par, pretty_print=True))
+                # print(et.tostring(par, pretty_print=True))
                 p = p._element
                 p.getparent().remove(p)
                 p._p = p._element = None
                 # Essai pour suppresion bookmarks + text
                 for z in range(pos_BK_end, pos_BK_start, -1):
-                    print(z)
+                    # print(z)
                     asup = par[z]
                     #
-                    print(et.tostring(asup, pretty_print=True))
+                    # print(et.tostring(asup, pretty_print=True))
                     par.remove(asup)
                 return True
     return False
+
+
+def replace_bk_by_value(bk_dict, table_source):
+    for bk_name, position in bk_dict.items():
+        # cas particulier
+        # Nuance peut etre a 2 endroit, on regarde si le 1er est vide si oui on prend le 2eme
+        if bk_name == 'BK_Item_Nuance':
+            if result[table_source][1][position[0]]:
+                add_bk = bookmark_text(doc, bk_name, result[table_source][1][position[0]], font_name='Arial',
+                                       font_size=127000)
+            elif not result[table_source][1][position[0]] and result[table_source][1][position[1]]:
+                add_bk = bookmark_text(doc, bk_name, result[table_source][1][position[1]], font_name='Arial',
+                                       font_size=127000)
+            else:
+                add_bk = bookmark_text(doc, bk_name, "N/A", font_name='Arial', font_size=127000)
+
+        else:
+            if not result[table_source][1][position]:
+                add_bk = bookmark_text(doc, bk_name, "N/A", font_name='Arial', font_size=127000)
+            else:
+                add_bk = bookmark_text(doc, bk_name, result[table_source][1][position], font_name='Arial',
+                                       font_size=127000)
+
+        try:
+            if not add_bk:
+                raise ValueError
+        except ValueError:
+            print("Probleme lors de l'insertion d'un BK!")
 
 
 # Press the green button in the gutter to run the script.
@@ -216,33 +282,23 @@ if __name__ == '__main__':
     ###### ATTENTION ######
     # Il ne faut pas qu'il y ai des demandent de correction dans le word, il faut tous traiter ou ignorer
     # Remplacement BK de l'item parent :
+    # On créer un dict avec le schema nomBK : Position tableau
     BK_item_parent = {'BK_Item_TTH_Parent': 5, 'BK_Item_Nuance': [6, 7], 'BK_Item_UM': 1, 'BK_Item_Coulee': 3,
                       'BK_Item_EP_UM': 8}
+    replace_bk_by_value(BK_item_parent, table_source='items_parent')
 
-    for bk_name, position in BK_item_parent.items():
-        # cas particulier
-        # Nuance peut etre a 2 endroit, on regarde si le 1er est vide si oui on prend le 2eme
-        if bk_name == 'BK_Item_Nuance':
-            if result['items_parent'][1][position[0]]:
-                bookmark_text(doc, bk_name, " " + result['items_parent'][1][position[0]], font_name='Arial',
-                              font_size=127000)
-            elif not result['items_parent'][1][position[0]] and result['items_parent'][1][position[1]]:
-                bookmark_text(doc, bk_name, " " + result['items_parent'][1][position[1]], font_name='Arial',
-                              font_size=127000)
-            else:
-                bookmark_text(doc, bk_name, " N/A", font_name='Arial', font_size=127000)
-
-        else:
-            if not result['items_parent'][1][position]:
-                bookmark_text(doc, bk_name, " N/A", font_name='Arial', font_size=127000)
-            else:
-                bookmark_text(doc, bk_name, " " + result['items_parent'][1][position], font_name='Arial',
-                              font_size=127000)
+    # Remplacement BK des conditions de l'essai :
+    BK_conditions_essais = {'BK_Condition_Solution': 0, 'BK_Condition_Gaz_Degazage': 1, 'BK_Condition_Gaz_Essai': 2,
+                            'BK_Condition_ph': 3, 'BK_Condition_ph_Saturation': 4, 'BK_Condtion_ph_fin': 5,
+                            'BK_Condition_Temp': 6, 'BK_Condition_Duree': 7, 'BK_Condition_Limite_Reelle': 8,
+                            'BK_Condition_Limite_Garantie': 9, 'BK_Condition_Contrainte': 10,
+                            'BK_Condition_Method': 11, 'BK_Condition_Examen': 12}
+    replace_bk_by_value(BK_conditions_essais, table_source='conditions_essais')
 
     # test = get_bookmark_par_element(doc, "BK_Condition_Solution")
     # print(test.r)
 
-    test = bookmark_text(doc, "BK_Condition_Solution", " 1111", font_name='Arial', font_size=127000)
+    # test = bookmark_text(doc, "BK_Condition_Solution", " 1111", font_name='Arial', font_size=127000)
 
     # Exemple pour recupérer les données d'un tableau
     # tb = doc.tables[1]

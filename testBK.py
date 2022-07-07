@@ -76,11 +76,11 @@ def bookmark_text(
                 p.getparent().remove(p)
                 p._p = p._element = None
                 # Essai pour suppresion bookmarks + text
-                for i in range(par.index(bookmark) - 1, pos_end):
+                for i in range(par.index(bookmark), pos_end +1):
                     print(i)
                     asup = par[i]
-                    #
-                    # print(et.tostring(asup, pretty_print=True))
+
+                    print(et.tostring(asup, pretty_print=True))
                     par.remove(asup)
 
                 # par.remove(bookmark)
