@@ -12,6 +12,10 @@ except TypeError:
 
     document = Document()
 
+from docx.table import _Cell, Table
+from docx.document import Document as _Document
+from docx.oxml.table import CT_Tbl
+from docx.text.paragraph import Paragraph
 from docx.oxml.shared import qn
 from docx.oxml.text.paragraph import CT_P
 from docx.enum.table import WD_CELL_VERTICAL_ALIGNMENT
@@ -29,7 +33,8 @@ def get_data_from_table():
     :return:
     """
     # Nom et position des tableaux à récupérer
-    table_list = {'items_essai': 1, 'item_tth' : 2, 'item_parent_tth' : 3, 'items_tole': 4, 'conditions_essais': 5, 'resultats_essais': 7}
+    table_list = {'items_essai': 1, 'item_tth': 2, 'item_parent_tth' : 3, 'items_tole': 4, 'item_tole_TTH': 5,
+                  'conditions_essais': 6, 'resultats_essais': 8}
     table_valeur = {}
     # Todo : suppresion des tableaux
     for nom_table, position in table_list.items():
@@ -54,6 +59,7 @@ def get_data_from_table():
         delete_table = doc.tables[position - increment]
         delete_table._element.getparent().remove(delete_table._element)
         increment += 1
+
     return table_valeur
 
 
@@ -68,13 +74,13 @@ def clean_table_data():
     # resultats_essais : Il faut trouvé la ref client dans la table items_essai et l'ajouter dans cette table avec de nettoyer items_essais
     resultats_essais = dict_tables['resultats_essais']
     items_essai = dict_tables['items_essai']
-    print(resultats_essais)
-    print(items_essai)
+    #print(resultats_essais)
+    #print(items_essai)
     for row in resultats_essais[1:]:
-        print(row[0])
+        #print(row[0])
         for rowx in items_essai[1:]:
             try:
-                print(rowx.index(row[0]))
+                #print(rowx.index(row[0]))
                 row[0] = rowx[1]
             except ValueError:
                 pass
@@ -82,7 +88,7 @@ def clean_table_data():
             #    print(str(index) + " -" + str(item))
         #test = [index for (index, item) in enumerate(items_essai[1:]) if item == row[0]]
         #print(test)
-    print(resultats_essais)
+    #print(resultats_essais)
 
 
 
@@ -260,7 +266,7 @@ def replace_bk_by_value(bk_dict, table_source):
 
 # Press the green button in the gutter to run the script.
 if __name__ == '__main__':
-    doc = Document(".\ExtractionLims\Test Rapport Essai corrosion - V2.docx")
+    doc = Document(".\ExtractionLims\Test Rapport Essai corrosion - V3.docx")
     all_paras = doc.paragraphs
     # print(len(all_paras))
 
@@ -291,9 +297,22 @@ if __name__ == '__main__':
     # Remplacement BK de l'item parent :
     # On créer un dict avec le schema nomBK : Position tableau
 
-    BK_item_tole = {'BK_Item_TTH_Parent': 2, 'BK_Item_Nuance': [3, 4], 'BK_Item_UM': 1, 'BK_Item_Coulee': 6,
-                    'BK_Item_EP_UM': 5}
+    BK_item_tole = {'BK_Item_Nuance': [2, 3], 'BK_Item_UM': 1, 'BK_Item_Coulee': 5,
+                    'BK_Item_EP_UM': 4}
     replace_bk_by_value(BK_item_tole, table_source='items_tole')
+
+    # Gestion TTH sur Tole :
+    # On va concatener les informations du tableau des TTHs produit.
+    # Une colonne par type de TTH, 1er ligne = nom, 2eme ligne = température, 3eme ligne = durée
+    tth_list = list(itertools.zip_longest(*result['item_tole_TTH']))
+    #print(tth_list)
+    tth_temp = []
+    for row in tth_list:
+        tth_temp.append('-'.join(row))
+
+    tth_tole = ' / '.join(tth_temp)
+    bookmark_text(doc, 'BK_Item_TTH_Parent', tth_tole, font_name='Arial',
+                  font_size=127000)
 
     # Remplacement BK des conditions de l'essai :
     BK_conditions_essais = {'BK_Condition_Solution': 0, 'BK_Condition_Gaz_Degazage': 1, 'BK_Condition_Gaz_Essai': 2,
@@ -341,5 +360,38 @@ if __name__ == '__main__':
     #     data.append(row_data)
     #
     # print(data)
+
+    def iter_block_items(parent):
+        """
+        Generate a reference to each paragraph and table child within *parent*,
+        in document order. Each returned value is an instance of either Table or
+        Paragraph. *parent* would most commonly be a reference to a main
+        Document object, but also works for a _Cell object, which itself can
+        contain paragraphs and tables.
+        """
+        if isinstance(parent, _Document):
+            parent_elm = parent.element.body
+            # print(parent_elm.xml)
+        elif isinstance(parent, _Cell):
+            parent_elm = parent._tc
+        else:
+            raise ValueError("something's not right")
+
+        for child in parent_elm.iterchildren():
+            if isinstance(child, CT_P):
+                yield Paragraph(child, parent)
+            elif isinstance(child, CT_Tbl):
+                yield Table(child, parent)
+
+
+
+    for block in iter_block_items(doc):
+        print('found one')
+        print(block.text if isinstance(block, Paragraph) else '<table>')
+        text = block.text if isinstance(block, Paragraph) else '<table>'
+        if text == '':
+
+
+
 
     doc.save("result.docx")
