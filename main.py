@@ -29,7 +29,7 @@ def get_data_from_table():
     :return:
     """
     # Nom et position des tableaux à récupérer
-    table_list = {'items_essai': 1, 'items_parent': 2, 'conditions_essais': 3, 'resultats_essais': 5}
+    table_list = {'items_essai': 1, 'item_tth' : 2, 'item_parent_tth' : 3, 'items_tole': 4, 'conditions_essais': 5, 'resultats_essais': 7}
     table_valeur = {}
     # Todo : suppresion des tableaux
     for nom_table, position in table_list.items():
@@ -90,17 +90,18 @@ def clean_table_data():
     # On va supprimer les doublons puis vérifier que la table contient bien uniquement 2 lignes, sinon c'est qu'il y a plusieurs items parents!
     # Todo : Voir pour vérifier également que cette table contient bien des données.
     # Todo : vérifier les forms des items parents
-    items_parent = dict_tables['items_parent']
-    items_parent = list(items_parent for items_parent, _ in itertools.groupby(items_parent))
-    try:
-        if len(items_parent) == 2:
-            dict_tables['items_parent'] = items_parent
-            # print(dict_tables['items_parent'])
-        else:
-            # Plus ou moins de 2 ligne = probleme!!
-            raise ValueError
-    except ValueError:
-        print("Les items n'ont pas tous le même parents!")
+    # 26-07-22 : Désactivé car cette table n'est plus utile
+    # items_parent = dict_tables['items_parent']
+    # items_parent = list(items_parent for items_parent, _ in itertools.groupby(items_parent))
+    # try:
+    #     if len(items_parent) == 2:
+    #         dict_tables['items_parent'] = items_parent
+    #         # print(dict_tables['items_parent'])
+    #     else:
+    #         # Plus ou moins de 2 ligne = probleme!!
+    #         raise ValueError
+    # except ValueError:
+    #     print("Les items n'ont pas tous le même parents!")
 
     # items_essai :
     # On va lui donner la forme du tableau de destination :
@@ -236,7 +237,13 @@ def replace_bk_by_value(bk_dict, table_source):
                                        font_size=127000)
             else:
                 add_bk = bookmark_text(doc, bk_name, "N/A", font_name='Arial', font_size=127000)
-
+        # Vérification que l'item parent de la Tole est bien la coulée
+        elif bk_name == 'BK_Item_Coulee':
+            if result[table_source][1][7] == 'Coulée':
+                add_bk = bookmark_text(doc, bk_name, result[table_source][1][position], font_name='Arial',
+                                       font_size=127000)
+            else:
+                add_bk = bookmark_text(doc, bk_name, "N/A", font_name='Arial', font_size=127000)
         else:
             if not result[table_source][1][position]:
                 add_bk = bookmark_text(doc, bk_name, "N/A", font_name='Arial', font_size=127000)
@@ -253,7 +260,7 @@ def replace_bk_by_value(bk_dict, table_source):
 
 # Press the green button in the gutter to run the script.
 if __name__ == '__main__':
-    doc = Document(".\ExtractionLims\Test Rapport Essai corrosion - modif.docx")
+    doc = Document(".\ExtractionLims\Test Rapport Essai corrosion - V2.docx")
     all_paras = doc.paragraphs
     # print(len(all_paras))
 
@@ -283,9 +290,10 @@ if __name__ == '__main__':
     # Il ne faut pas qu'il y ai des demandent de correction dans le word, il faut tous traiter ou ignorer
     # Remplacement BK de l'item parent :
     # On créer un dict avec le schema nomBK : Position tableau
-    BK_item_parent = {'BK_Item_TTH_Parent': 5, 'BK_Item_Nuance': [6, 7], 'BK_Item_UM': 1, 'BK_Item_Coulee': 3,
-                      'BK_Item_EP_UM': 8}
-    replace_bk_by_value(BK_item_parent, table_source='items_parent')
+
+    BK_item_tole = {'BK_Item_TTH_Parent': 2, 'BK_Item_Nuance': [3, 4], 'BK_Item_UM': 1, 'BK_Item_Coulee': 6,
+                    'BK_Item_EP_UM': 5}
+    replace_bk_by_value(BK_item_tole, table_source='items_tole')
 
     # Remplacement BK des conditions de l'essai :
     BK_conditions_essais = {'BK_Condition_Solution': 0, 'BK_Condition_Gaz_Degazage': 1, 'BK_Condition_Gaz_Essai': 2,
