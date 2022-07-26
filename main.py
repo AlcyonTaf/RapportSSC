@@ -264,6 +264,55 @@ def replace_bk_by_value(bk_dict, table_source):
             print("Probleme lors de l'insertion d'un BK!")
 
 
+def delete_bookmark(
+        doc,
+        bookmark_name,
+        header=False):
+    doc_element = (
+        doc.sections[0].header.part._element
+        if header is True
+        else doc._part._element
+    )
+
+    find = False
+    element_to_remove = []
+    for element in doc_element.iter():
+        if element.tag == qn("w:bookmarkStart") and element.get(qn("w:name")) == bookmark_name:
+            #print("%s - %s - %s" % (element.tag, element.text, element.get(qn("w:name"))))
+            #print(element.get(qn("w:id")))
+            Bk_id = element.get(qn("w:id"))
+            find = True
+
+        if find:
+            elem_loop = element
+            # print(element.tag + " - " + qn("w:body>"))
+            # On considere que tous les éléments a supprimer sont des enfants de w:body
+            # On va donc remonter depuis l'element en cours pour trouvé le parent qui est enfant de w:body
+            while True:
+                # print(elem_loop.tag + " - " + qn("w:body>"))
+                if elem_loop.getparent().tag == qn("w:body"):
+                    # print('trouvé')
+                    element_to_remove.append(elem_loop)
+                    break
+                else:
+                    # On remonte au parent
+                    elem_loop = elem_loop.getparent()
+                    # print(elem_loop)
+
+            if element.tag == qn("w:bookmarkEnd") and element.get(qn("w:id")) == Bk_id:
+                # print('Fin de notre BK')
+                # print(is_root(element.getparent()))
+                # print(is_root(element.getparent().getparent()))
+                find = False
+
+    # On supprime les doublons
+    element_to_remove = list(dict.fromkeys(element_to_remove))
+
+    body = doc_element.getchildren()[0]
+    # On boucle sur les éléments a supprimer
+    for elem_supp in element_to_remove:
+        body.remove(elem_supp)
+
 # Press the green button in the gutter to run the script.
 if __name__ == '__main__':
     doc = Document(".\ExtractionLims\Test Rapport Essai corrosion - V3.docx")
@@ -322,6 +371,12 @@ if __name__ == '__main__':
                             'BK_Condition_Method': 11, 'BK_Condition_Examen': 12}
     replace_bk_by_value(BK_conditions_essais, table_source='conditions_essais')
 
+
+    # Pour finir on supprime les BK_delete_x
+    # Todo : Penser a modifier le templace LIMS pour ajouter les BK_delete_x
+    delete_bookmark(doc, 'BK_Delete_1')
+
+
     # test = get_bookmark_par_element(doc, "BK_Condition_Solution")
     # print(test.r)
 
@@ -360,36 +415,6 @@ if __name__ == '__main__':
     #     data.append(row_data)
     #
     # print(data)
-
-    def iter_block_items(parent):
-        """
-        Generate a reference to each paragraph and table child within *parent*,
-        in document order. Each returned value is an instance of either Table or
-        Paragraph. *parent* would most commonly be a reference to a main
-        Document object, but also works for a _Cell object, which itself can
-        contain paragraphs and tables.
-        """
-        if isinstance(parent, _Document):
-            parent_elm = parent.element.body
-            # print(parent_elm.xml)
-        elif isinstance(parent, _Cell):
-            parent_elm = parent._tc
-        else:
-            raise ValueError("something's not right")
-
-        for child in parent_elm.iterchildren():
-            if isinstance(child, CT_P):
-                yield Paragraph(child, parent)
-            elif isinstance(child, CT_Tbl):
-                yield Table(child, parent)
-
-
-
-    for block in iter_block_items(doc):
-        print('found one')
-        print(block.text if isinstance(block, Paragraph) else '<table>')
-        text = block.text if isinstance(block, Paragraph) else '<table>'
-        if text == '':
 
 
 

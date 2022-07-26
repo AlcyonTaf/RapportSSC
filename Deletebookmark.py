@@ -37,54 +37,44 @@ def delete_bookmark(
         if header is True
         else doc._part._element
     )
-    # print(et.tostring(doc._part._element, pretty_print=True)) # Pour obtenir tout le document en xml
-    bookmarks_list = doc_element.findall(".//" + qn("w:bookmarkStart"))
-    bookmarks_list_end = doc_element.findall(".//" + qn("w:bookmarkEnd"))
 
     find = False
-    Element_To_Remove = []
+    element_to_remove = []
     for element in doc_element.iter():
-        #print(element.tag)
-        if element.tag == qn("w:bookmarkStart") and element.get(qn("w:name")) == 'BK_Delete_1':
-            print("%s - %s - %s" % (element.tag, element.text, element.get(qn("w:name"))))
-            print(element.get(qn("w:id")))
+        if element.tag == qn("w:bookmarkStart") and element.get(qn("w:name")) == bookmark_name:
+            #print("%s - %s - %s" % (element.tag, element.text, element.get(qn("w:name"))))
+            #print(element.get(qn("w:id")))
             Bk_id = element.get(qn("w:id"))
-            print(is_root(element.getparent()))
             find = True
-
 
         if find:
             elem_loop = element
-            print(element.tag + " - " + qn("w:body>"))
-
-            findbody = False
+            # print(element.tag + " - " + qn("w:body>"))
+            # On considere que tous les éléments a supprimer sont des enfants de w:body
+            # On va donc remonter depuis l'element en cours pour trouvé le parent qui est enfant de w:body
             while True:
-                print(elem_loop.tag + " - " + qn("w:body>"))
+                # print(elem_loop.tag + " - " + qn("w:body>"))
                 if elem_loop.getparent().tag == qn("w:body"):
-                    print('trouvé')
-                    Element_To_Remove.append(elem_loop)
+                    # print('trouvé')
+                    element_to_remove.append(elem_loop)
                     break
                 else:
+                    # On remonte au parent
                     elem_loop = elem_loop.getparent()
-                    #print(elem_loop)
-
+                    # print(elem_loop)
 
             if element.tag == qn("w:bookmarkEnd") and element.get(qn("w:id")) == Bk_id:
-                print('Fin de notre BK')
-                #print(is_root(element.getparent()))
-                #print(is_root(element.getparent().getparent()))
+                # print('Fin de notre BK')
+                # print(is_root(element.getparent()))
+                # print(is_root(element.getparent().getparent()))
                 find = False
 
-
-    #Apparement il ya des doublons, on les vires :
-    Element_To_Remove = list(dict.fromkeys(Element_To_Remove))
-    print(Element_To_Remove)
+    # On supprime les doublons
+    element_to_remove = list(dict.fromkeys(element_to_remove))
 
     body = doc_element.getchildren()[0]
-
-    for elem_supp in Element_To_Remove:
-        print(elem_supp)
-        print(elem_supp.getparent().tag)
+    # On boucle sur les éléments a supprimer
+    for elem_supp in element_to_remove:
         body.remove(elem_supp)
 
 
