@@ -12,13 +12,13 @@ except TypeError:
 
     document = Document()
 
-from docx.table import _Cell, Table
-from docx.document import Document as _Document
+# from docx.table import _Cell, Table
+# from docx.document import Document as _Document
 from docx.oxml.table import CT_Tbl
-from docx.text.paragraph import Paragraph
+# from docx.text.paragraph import Paragraph
 from docx.oxml.shared import qn
 from docx.oxml.text.paragraph import CT_P
-from docx.enum.table import WD_CELL_VERTICAL_ALIGNMENT
+# from docx.enum.table import WD_CELL_VERTICAL_ALIGNMENT
 from docx.enum.text import WD_PARAGRAPH_ALIGNMENT
 
 
@@ -33,7 +33,7 @@ def get_data_from_table():
     :return:
     """
     # Nom et position des tableaux à récupérer
-    table_list = {'items_essai': 1, 'item_tth': 2, 'item_parent_tth' : 3, 'items_tole': 4, 'item_tole_TTH': 5,
+    table_list = {'items_essai': 1, 'item_tth': 2, 'item_parent_tth': 3, 'items_tole': 4, 'item_tole_TTH': 5,
                   'conditions_essais': 6, 'resultats_essais': 8}
     table_valeur = {}
     # Todo : suppresion des tableaux
@@ -70,30 +70,30 @@ def clean_table_data():
     :return: dict nettoyer
     """
     dict_tables = get_data_from_table()
-
-    # resultats_essais : Il faut trouvé la ref client dans la table items_essai et l'ajouter dans cette table avec de nettoyer items_essais
+    # resultats_essais : Il faut trouvé la ref client dans la table items_essai et l'ajouter dans cette table avec de
+    # nettoyer items_essais
     resultats_essais = dict_tables['resultats_essais']
     items_essai = dict_tables['items_essai']
-    #print(resultats_essais)
-    #print(items_essai)
+    # print(resultats_essais)
+    # print(items_essai)
     for row in resultats_essais[1:]:
-        #print(row[0])
+        # print(row[0])
         for rowx in items_essai[1:]:
             try:
-                #print(rowx.index(row[0]))
+                # print(rowx.index(row[0]))
                 row[0] = rowx[1]
             except ValueError:
                 pass
             # for index, item in enumerate(rowx):
             #    print(str(index) + " -" + str(item))
-        #test = [index for (index, item) in enumerate(items_essai[1:]) if item == row[0]]
-        #print(test)
-    #print(resultats_essais)
-
-
+        # test = [index for (index, item) in enumerate(items_essai[1:]) if item == row[0]]
+        # print(test)
+    # print(resultats_essais)
 
     # items_parent :
-    # On va supprimer les doublons puis vérifier que la table contient bien uniquement 2 lignes, sinon c'est qu'il y a plusieurs items parents!
+    # On va supprimer les doublons puis vérifier que la table contient bien uniquement 2 lignes,
+    # sinon c'est qu'il y a plusieurs items parents!
+
     # Todo : Voir pour vérifier également que cette table contient bien des données.
     # Todo : vérifier les forms des items parents
     # 26-07-22 : Désactivé car cette table n'est plus utile
@@ -278,8 +278,8 @@ def delete_bookmark(
     element_to_remove = []
     for element in doc_element.iter():
         if element.tag == qn("w:bookmarkStart") and element.get(qn("w:name")) == bookmark_name:
-            #print("%s - %s - %s" % (element.tag, element.text, element.get(qn("w:name"))))
-            #print(element.get(qn("w:id")))
+            # print("%s - %s - %s" % (element.tag, element.text, element.get(qn("w:name"))))
+            # print(element.get(qn("w:id")))
             Bk_id = element.get(qn("w:id"))
             find = True
 
@@ -312,6 +312,7 @@ def delete_bookmark(
     # On boucle sur les éléments a supprimer
     for elem_supp in element_to_remove:
         body.remove(elem_supp)
+
 
 # Press the green button in the gutter to run the script.
 if __name__ == '__main__':
@@ -354,7 +355,7 @@ if __name__ == '__main__':
     # On va concatener les informations du tableau des TTHs produit.
     # Une colonne par type de TTH, 1er ligne = nom, 2eme ligne = température, 3eme ligne = durée
     tth_list = list(itertools.zip_longest(*result['item_tole_TTH']))
-    #print(tth_list)
+    # print(tth_list)
     tth_temp = []
     for row in tth_list:
         tth_temp.append('-'.join(row))
@@ -371,11 +372,9 @@ if __name__ == '__main__':
                             'BK_Condition_Method': 11, 'BK_Condition_Examen': 12}
     replace_bk_by_value(BK_conditions_essais, table_source='conditions_essais')
 
-
     # Pour finir on supprime les BK_delete_x
     # Todo : Penser a modifier le templace LIMS pour ajouter les BK_delete_x
     delete_bookmark(doc, 'BK_Delete_1')
-
 
     # test = get_bookmark_par_element(doc, "BK_Condition_Solution")
     # print(test.r)
@@ -415,8 +414,5 @@ if __name__ == '__main__':
     #     data.append(row_data)
     #
     # print(data)
-
-
-
 
     doc.save("result.docx")
