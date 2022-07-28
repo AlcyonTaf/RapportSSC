@@ -1,6 +1,8 @@
 # -*- coding: utf-8 -*-
 import itertools
-
+import sys
+import os
+#import xml.etree.cElementTree as et
 import docx
 from lxml import etree as et
 from docx.document import Document
@@ -119,6 +121,9 @@ def clean_table_data():
     # print(items_essai)
     temp_items_essais = []
     for row in items_essai[1:]:
+        # print(row)
+        row = ["N/A" if x == '' else x for x in row]
+        # print(row)
         ref_item = row[1]
         dimensions = row[5] + "*" + row[6] + "*" + row[7]
         position = row[2] + " / " + row[3]
@@ -133,15 +138,17 @@ def clean_table_data():
     # On supprime la 1er colonne de chaque ligne car ne sert a rien et comme différente empeche la suppresion des doublon
     conditions_essais = [row[1:] for row in conditions_essais]
     conditions_essais = list(conditions_essais for conditions_essais, _ in itertools.groupby(conditions_essais))
-    try:
-        if len(conditions_essais) == 2:
-            dict_tables['conditions_essais'] = conditions_essais
-            # print(dict_tables['items_parent'])
-        else:
-            # Plus ou moins de 2 ligne = probleme!!
-            raise ValueError
-    except ValueError:
-        print("Les items n'ont pas tous les mêmes conditions d'essais")
+    # TODO : Désactivé pour test lims
+    # try:
+    #     if len(conditions_essais) == 2:
+    #         dict_tables['conditions_essais'] = conditions_essais
+    #         # print(dict_tables['items_parent'])
+    #     else:
+    #         # Plus ou moins de 2 ligne = probleme!!
+    #         raise ValueError
+    # except ValueError:
+    #
+    #     print("Les items n'ont pas tous les mêmes conditions d'essais")
 
     return dict_tables
 
@@ -308,7 +315,7 @@ def delete_bookmark(
     # On supprime les doublons
     element_to_remove = list(dict.fromkeys(element_to_remove))
 
-    body = doc_element.getchildren()[0]
+    body = doc_element.getchildren()[1]
     # On boucle sur les éléments a supprimer
     for elem_supp in element_to_remove:
         body.remove(elem_supp)
@@ -316,7 +323,14 @@ def delete_bookmark(
 
 # Press the green button in the gutter to run the script.
 if __name__ == '__main__':
-    doc = Document(".\ExtractionLims\Test Rapport Essai corrosion - V3.docx")
+
+    # Récupération de l'emplacement du fichier de TEEXMA :
+    # Pour test :
+    # filepath = "C:\\Users\\CRMC\\PycharmProjects\\RapportSSC\\ExtractionLims\\Test Rapport Essai corrosion - V4.dotx"
+    filepath = sys.argv[1]
+    # print(filepath)
+    # Ouverture du fichier
+    doc = Document(filepath)
     all_paras = doc.paragraphs
     # print(len(all_paras))
 
@@ -374,6 +388,7 @@ if __name__ == '__main__':
 
     # Pour finir on supprime les BK_delete_x
     # Todo : Penser a modifier le templace LIMS pour ajouter les BK_delete_x
+    # Todo : Désactiver pour test lims car ne fonctionne plus avec dotx => trouver pourquoi!!!
     delete_bookmark(doc, 'BK_Delete_1')
 
     # test = get_bookmark_par_element(doc, "BK_Condition_Solution")
@@ -415,4 +430,21 @@ if __name__ == '__main__':
     #
     # print(data)
 
-    doc.save("result.docx")
+    doc_part = doc.part
+    doc_part._content_type = 'application/vnd.openxmlformats-officedocument.wordprocessingml.template.main+xml'
+    #doc.save("result.dotx")
+    # Todo : a réactiver pour LIMS
+    doc.save(filepath)
+
+    ###### Réponse a Teexma ######
+    # Récupération du dossier
+    dir = os.path.dirname(filepath)
+    # Creation du XML pour répondre a Teexma
+    root = et.Element("Output")
+    et.SubElement(root, "Status").text = "OK"
+    et.SubElement(root, "OutputFilePath").text = filepath
+
+    tree = et.ElementTree(root)
+    et.indent(tree, space="\t", level=0)
+    tree.write(dir + "\main.xml", encoding="utf-8", xml_declaration=True)
+

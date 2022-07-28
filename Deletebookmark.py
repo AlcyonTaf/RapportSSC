@@ -38,6 +38,7 @@ def delete_bookmark(
         else doc._part._element
     )
 
+    #print(et.tostring(doc_element))
     find = False
     element_to_remove = []
     for element in doc_element.iter():
@@ -72,13 +73,15 @@ def delete_bookmark(
     # On supprime les doublons
     element_to_remove = list(dict.fromkeys(element_to_remove))
 
-    body = doc_element.getchildren()[0]
+    body = doc_element.getchildren()[1]
+    print(body)
     # On boucle sur les éléments a supprimer
     for elem_supp in element_to_remove:
+        print(elem_supp)
         body.remove(elem_supp)
 
-
-doc = Document(".\ExtractionLims\Test Rapport Essai corrosion - modif.docx")
+doc = Document(".\ExtractionLims\Test Rapport Essai corrosion - V4.dotx")
+#doc = Document(".\ExtractionLims\Test Rapport Essai corrosion - modif.docx")
 
 delete_bookmark(doc, 'BK_Delete_1')
 
